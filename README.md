@@ -258,22 +258,6 @@ Em um ambiente real, esse tipo de monitoramento pode ajudar a identificar:
 
 Dessa forma, o sistema contribui para uma visão mais organizada da infraestrutura e facilita o acompanhamento dos recursos computacionais.
 
-## 🔮 Possíveis melhorias
-
-Algumas funcionalidades que podem ser adicionadas futuramente:
-
-* [ ] Gráficos históricos de CPU e RAM.
-* [ ] Cadastro de novos servidores.
-* [ ] Sistema de autenticação.
-* [ ] Notificações de alertas.
-* [ ] Exportação dos dados.
-* [ ] Banco de dados para armazenamento permanente.
-* [ ] Monitoramento de disco.
-* [ ] Monitoramento de temperatura.
-* [ ] Monitoramento de rede.
-* [ ] Histórico individual por servidor.
-* [ ] API para receber telemetria.
-* [ ] Comunicação com dispositivos IoT reais.
 
 ## 👨‍💻 Autor
 
