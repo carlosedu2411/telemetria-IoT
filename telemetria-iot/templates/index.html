@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Telemetria IoT | Painel operacional</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body class="dashboard-bg">
+    <nav class="navbar navbar-expand-lg border-bottom border-white border-opacity-10">
+        <div class="container py-2">
+            <a class="navbar-brand text-white fw-bold" href="#">
+                <span class="brand-mark"><i class="bi bi-broadcast-pin"></i></span>
+                telemetria<span class="brand-dot">.</span>iot
+            </a>
+            <div class="d-flex align-items-center gap-2 small text-white-50">
+                <span class="live-dot"></span> monitoramento ativo
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-5">
+        <header class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4 reveal">
+            <div>
+                <p class="eyebrow mb-2">CENTRO DE OPERAÇÕES / TEMPO REAL</p>
+                <h1 class="display-5 text-white fw-bold mb-2">Painel de telemetria</h1>
+                <p class="text-white-50 mb-0">Acompanhe a saúde da sua rede em um só lugar.</p>
+            </div>
+            <div class="refresh-box text-white-50">
+                <i class="bi bi-arrow-repeat me-1"></i> Próxima atualização em <strong id="contador" class="text-white">3s</strong>
+            </div>
+        </header>
+
+        <section class="row g-3 mb-4 reveal" aria-label="Resumo da rede">
+            <div class="col-12 col-md-4">
+                <div class="metric-card metric-blue h-100">
+                    <div class="metric-icon"><i class="bi bi-activity"></i></div>
+                    <div><span class="metric-label">Leituras recebidas</span><strong id="total-leituras">--</strong></div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="metric-card metric-green h-100">
+                    <div class="metric-icon"><i class="bi bi-shield-check"></i></div>
+                    <div><span class="metric-label">Status normal</span><strong id="total-normais">--</strong></div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="metric-card metric-red h-100">
+                    <div class="metric-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div><span class="metric-label">Alertas críticos</span><strong id="total-criticos">--</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel reveal">
+            <div class="panel-heading d-flex flex-column flex-sm-row justify-content-between gap-2">
+                <div><h2 class="h5 text-white mb-1">Últimas leituras</h2><p class="small text-white-50 mb-0">Dados dos dispositivos conectados</p></div>
+                <div class="d-flex align-items-center gap-3">
+                    <span id="status-api" class="connection-badge"><i class="bi bi-circle-fill"></i> aguardando dados</span>
+                    <button id="limpar-dados" type="button" class="btn btn-clear btn-sm" title="Limpar todas as leituras">
+                        <i class="bi bi-trash3 me-1"></i> Limpar dados
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0">
+                    <thead><tr><th>ID</th><th>Dispositivo</th><th>Uso da CPU</th><th>RAM utilizada</th><th>Status</th><th>Data / Hora</th></tr></thead>
+                    <tbody id="tabela-dados"><tr><td colspan="6" class="empty-state"><span class="spinner-border spinner-border-sm me-2"></span> Buscando leituras...</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let segundos = 3;
+        const contador = document.getElementById('contador');
+
+        async function carregarDados() {
+            try {
+                const res = await fetch('/api/telemetria');
+                if (!res.ok) throw new Error('API indisponível');
+                const dados = await res.json();
+                const tbody = document.getElementById('tabela-dados');
+                tbody.innerHTML = '';
+                const criticos = dados.filter(item => item.status === 'CRITICAL').length;
+                const avisos = dados.filter(item => item.status === 'WARNING').length;
+                document.getElementById('total-leituras').textContent = dados.length;
+                document.getElementById('total-normais').textContent = dados.length - criticos - avisos;
+                document.getElementById('total-criticos').textContent = criticos;
+                document.getElementById('status-api').innerHTML = '<i class="bi bi-circle-fill"></i> conectado';
+                document.getElementById('status-api').className = 'connection-badge is-online';
+
+                if (!dados.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma leitura registrada ainda.</td></tr>';
+                    return;
+                }
+
+                dados.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'data-row';
+                    row.innerHTML = `
+                        <td class="text-white-50">#${item.id}</td>
+                        <td><span class="device-name"><i class="bi bi-cpu me-2"></i>${item.device_id}</span></td>
+                        <td class="reading-value">${Number(item.cpu_uso).toFixed(1)} <small>%</small></td>
+                        <td class="reading-value">${Number(item.ram_uso).toFixed(1)} <small>%</small></td>
+                        <td><span class="status-pill ${item.status === 'CRITICAL' ? 'status-critical' : item.status === 'WARNING' ? 'status-warning' : 'status-normal'}"><i class="bi ${item.status === 'CRITICAL' ? 'bi-exclamation-circle' : item.status === 'WARNING' ? 'bi-exclamation-triangle' : 'bi-check-circle'} me-1"></i>${item.status === 'CRITICAL' ? 'CRÍTICO' : item.status === 'WARNING' ? 'ATENÇÃO' : 'NORMAL'}</span></td>
+                        <td class="text-white-50 small">${item.timestamp}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error("Erro ao carregar dados:", err);
+                document.getElementById('status-api').innerHTML = '<i class="bi bi-circle-fill"></i> sem conexão';
+                document.getElementById('status-api').className = 'connection-badge is-offline';
+            }
+            segundos = 3;
+        }
+
+        async function limparDados() {
+            if (!confirm('Tem certeza que deseja apagar todas as leituras?')) return;
+            const botao = document.getElementById('limpar-dados');
+            botao.disabled = true;
+            try {
+                const res = await fetch('/api/telemetria', { method: 'DELETE' });
+                if (!res.ok) throw new Error('Falha ao limpar dados');
+                await carregarDados();
+            } catch (err) {
+                console.error('Erro ao limpar dados:', err);
+                alert('Não foi possível limpar as leituras.');
+            } finally {
+                botao.disabled = false;
+            }
+        }
+
+        document.getElementById('limpar-dados').addEventListener('click', limparDados);
+        setInterval(() => { segundos = Math.max(0, segundos - 1); contador.textContent = `${segundos}s`; }, 1000);
+        setInterval(carregarDados, 3000);
+        carregarDados();
+    </script>
+</body>
+</html>
